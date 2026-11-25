@@ -29,6 +29,7 @@ def test_defaults():
         "region_name": "EXAMPLE-CLOUD",
         "interface": "public",
         "identity_api_version": 3,
+        "verify": True,
     }
     assert secure == {"auth": {"password": "s3cret-value"}}
 
@@ -62,6 +63,43 @@ def test_system_scope_conflicts_with_project_fields():
 def test_system_scope_invalid_value():
     with pytest.raises(WrapError, match="niedozwoloną wartość 'project'"):
         build_cloud("SYS", make_item("SYS", extra={"system_scope": "project"}))
+
+
+def test_verify_cert_false_disables_verification():
+    cloud, _ = build_cloud("C", make_item("C", extra={"verify_cert": "false"}))
+    assert cloud["verify"] is False
+
+
+@pytest.mark.parametrize("value", ["TRUE", "yes", "1", " true "])
+def test_verify_cert_truthy_values(value):
+    cloud, _ = build_cloud("C", make_item("C", extra={"verify_cert": value}))
+    assert cloud["verify"] is True
+
+
+@pytest.mark.parametrize("value", ["FALSE", "No", "0"])
+def test_verify_cert_falsy_values(value):
+    cloud, _ = build_cloud("C", make_item("C", extra={"verify_cert": value}))
+    assert cloud["verify"] is False
+
+
+def test_verify_cert_label_is_case_insensitive():
+    cloud, _ = build_cloud("C", make_item("C", extra={"Verify_Cert": "false"}))
+    assert cloud["verify"] is False
+
+
+def test_verify_cert_invalid_value():
+    with pytest.raises(WrapError, match="'verify_cert' ma niedozwoloną wartość") as exc:
+        build_cloud("C", make_item("C", extra={"verify_cert": "maybe"}))
+    assert "maybe" not in str(exc.value) and "s3cret-value" not in str(exc.value)
+
+
+def test_insecure_cloud_is_warned_about_in_summary(fake_op, args):
+    seed(fake_op, make_item("Safe"), make_item("Loose", extra={"verify_cert": "false"}))
+    prep = prepare(args(), fake_op.environ())
+    assert load(prep.env["OS_CLIENT_CONFIG_FILE"])["Loose"]["verify"] is False
+    assert load(prep.env["OS_CLIENT_CONFIG_FILE"])["Safe"]["verify"] is True
+    warning = [line for line in prep.summary if "weryfikacja certyfikatu TLS wyłączona" in line]
+    assert len(warning) == 1 and "Loose" in warning[0] and "Safe" not in warning[0]
 
 
 def test_website_falls_back_to_primary_url():

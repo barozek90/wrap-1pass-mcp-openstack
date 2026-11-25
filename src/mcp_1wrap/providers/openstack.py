@@ -12,6 +12,7 @@ case-insensitively):
     system_scope = all                  system scope (excludes project_* fields)
     interface                           default: public
     identity_api_version                default: 3
+    verify_cert                         default: true (false = ignore TLS certificate)
 """
 
 from __future__ import annotations
@@ -33,9 +34,23 @@ DEFAULTS = {
     "user_domain_name": "Default",
     "project_name": "admin",
     "project_domain_name": "Default",
+    "verify_cert": "true",
 }
 PROJECT_SCOPE_FIELDS = ["project_name", "project_domain_name"]
 _OPTIONS = {"tag", "vault", "cloud", "cloud_name_var"}
+_TRUE = {"true", "yes", "1"}
+_FALSE = {"false", "no", "0"}
+
+
+def _parse_bool(stage: str, name: str, value: Any) -> bool:
+    text = str(value).strip().casefold()
+    if text in _TRUE:
+        return True
+    if text in _FALSE:
+        return False
+    raise WrapError(
+        f"[{stage}] pole '{name}' ma niedozwoloną wartość (dozwolone: true, false)"
+    )
 
 
 def validate(options: dict[str, Any], where: str) -> None:
@@ -76,6 +91,8 @@ def build_cloud(title: str, item: dict[str, Any]) -> tuple[dict[str, Any], dict[
             f"[{stage}] pole 'identity_api_version' nie jest liczbą: {api_version!r}"
         ) from None
 
+    verify = _parse_bool(stage, "verify_cert", fields.get("verify_cert", DEFAULTS["verify_cert"]))
+
     auth: dict[str, Any] = {
         "auth_url": fields["website"],
         "username": fields["username"],
@@ -102,6 +119,7 @@ def build_cloud(title: str, item: dict[str, Any]) -> tuple[dict[str, Any], dict[
         "region_name": fields.get("region_name", title),
         "interface": fields.get("interface", DEFAULTS["interface"]),
         "identity_api_version": api_version,
+        "verify": verify,
     }
     return cloud, {"auth": {"password": fields["password"]}}
 
@@ -165,4 +183,9 @@ def apply(ctx: Context, options: dict[str, Any]) -> Result:
     result.summary.append(
         f"openstack: sejf '{vault}', tag '{tag}', chmury ({len(clouds)}): {', '.join(clouds)}"
     )
+    insecure = [name for name, cloud in clouds.items() if cloud["verify"] is False]
+    if insecure:
+        result.summary.append(
+            f"openstack: UWAGA, weryfikacja certyfikatu TLS wyłączona dla: {', '.join(insecure)}"
+        )
     return result
