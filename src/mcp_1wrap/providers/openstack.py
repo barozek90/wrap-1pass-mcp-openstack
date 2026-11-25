@@ -109,7 +109,7 @@ def build_cloud(title: str, item: dict[str, Any]) -> tuple[dict[str, Any], dict[
 def apply(ctx: Context, options: dict[str, Any]) -> Result:
     env = ctx.environ
     vault = env.get("OP_VAULT", "").strip() or options.get("vault") or ctx.vault
-    tag = env.get("OS_TAG", "").strip() or options.get("tag") or DEFAULT_TAG
+    tag = env.get("OP_TAG", "").strip() or options.get("tag") or DEFAULT_TAG
     wanted_raw = env.get("OS_CLOUD", "").strip() or options.get("cloud", "")
     wanted = wanted_raw.strip().casefold() or None
     cloud_name_var = options.get("cloud_name_var", "CLOUD_NAME")

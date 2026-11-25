@@ -48,11 +48,11 @@ def test_no_command_is_an_error_unless_check(fake_op, args):
 
 def test_helper_variables_are_not_passed_to_the_server(fake_op, args):
     fake_op.set_db({"items": {"Private": [make_item("A")]}, "refs": {}})
-    env = fake_op.environ(OS_TAG="OS_TAG", MCP_1WRAP_DEBUG="1", MCP_1WRAP_PROFILE="openstack")
+    env = fake_op.environ(OP_TAG="OS_TAG", MCP_1WRAP_DEBUG="1", MCP_1WRAP_PROFILE="openstack")
     prep = prepare(args(), env)
-    for name in ("OS_TAG", "MCP_1WRAP_DEBUG", "MCP_1WRAP_PROFILE"):
+    for name in ("OP_TAG", "MCP_1WRAP_DEBUG", "MCP_1WRAP_PROFILE"):
         assert name not in prep.env
-    assert env["OS_TAG"] == "OS_TAG"  # the caller's mapping is untouched
+    assert env["OP_TAG"] == "OS_TAG"  # the caller's mapping is untouched
 
 
 def test_stale_path_is_repaired_for_the_server(fake_op, args):
@@ -72,7 +72,7 @@ def run_cli(fake_op, *cli_args, extra_env=None):
 def test_end_to_end_exec_has_clean_stdout(fake_op):
     fake_op.set_db({"items": {"Private": [make_item("EXAMPLE-CLOUD")]}, "refs": {}})
     done = run_cli(fake_op, "--", sys.executable, "-c", DUMP,
-                   extra_env={"OS_CLOUD": "example-cloud", "OS_TAG": "OS_TAG"})
+                   extra_env={"OS_CLOUD": "example-cloud", "OP_TAG": "OS_TAG"})
     assert done.returncode == 0, done.stderr
     # stdout is exactly what the server printed: nothing from the launcher
     assert json.loads(done.stdout) == ["CLOUD_NAME", "FAKE_OP_DB", "FAKE_OP_LOG",
