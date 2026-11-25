@@ -2,7 +2,7 @@
 # Sekretów tu nie ma: tylko nazwy sejfów, tagów i referencje 1Password.
 vault   = "Private"
 timeout = 60
-unset   = ["OS_TAG"]
+unset   = ["OP_TAG"]
 
 [[provider]]
 type = "openstack"

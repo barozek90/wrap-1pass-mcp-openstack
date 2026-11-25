@@ -131,7 +131,7 @@ def test_duplicate_names_differing_in_case(fake_op, args):
 
 def test_custom_tag_and_vault_from_environment(fake_op, args):
     seed(fake_op, make_item("A", tags=["prod"]), make_item("B", tags=["OS_TAG"]), vault="Infra")
-    prep = prepare(args(), fake_op.environ(OS_TAG="prod", OP_VAULT="Infra"))
+    prep = prepare(args(), fake_op.environ(OP_TAG="prod", OP_VAULT="Infra"))
     assert set(load(prep.env["OS_CLIENT_CONFIG_FILE"])) == {"A"}
 
 

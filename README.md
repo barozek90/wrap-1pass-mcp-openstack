@@ -78,7 +78,7 @@ Zmienne środowiskowe (pierwszeństwo przed profilem):
 | zmienna | znaczenie | domyślnie |
 |---------|-----------|-----------|
 | `OP_VAULT` | sejf z itemami | `Private` |
-| `OS_TAG` | tag itemów (nie jest przekazywana do serwera) | `OS_TAG` |
+| `OP_TAG` | tag itemów (nie jest przekazywana do serwera) | `OS_TAG` |
 | `OS_CLOUD` | generuj tylko tę chmurę (bez rozróżniania wielkości liter); bez niej wszystkie z tagiem | - |
 | `OP_TIMEOUT` | sekundy na jedno wywołanie `op` | `60` |
 | `MCP_1WRAP_PROFILE` | nazwa profilu | wbudowany `openstack` |
@@ -96,7 +96,7 @@ Profil zawiera nazwy sejfów, tagów i referencje, **nigdy sekrety**.
 ```toml
 vault   = "Private"          # domyślny sejf
 timeout = 60                 # sekundy na wywołanie 'op'
-unset   = ["OS_TAG"]         # zmienne, których serwer nie dostanie
+unset   = ["OP_TAG"]         # zmienne, których serwer nie dostanie
 
 [[provider]]
 type = "openstack"
@@ -135,7 +135,7 @@ Z poziomu repo bez instalacji: `uv run mcp-1wrap --check` albo
   sejfu, tagu i wybranej chmury, więc równoległe instancje (terminal + aplikacja) nie psują sobie plików.
 - `op` jest wołane z timeoutem i z `stdin=/dev/null`, a komunikaty błędów nie zawierają wartości pól.
 - Zmienne `OS_*` inne niż selektory (`OS_CLOUD`, `OS_CLIENT_*`) powodują, że openstacksdk pokazuje
-  fikcyjną chmurę `envvars`; launcher usuwa własne pomocnicze zmienne (`OS_TAG`) przed uruchomieniem serwera.
+  fikcyjną chmurę `envvars`; launcher usuwa własne pomocnicze zmienne (`OP_TAG`) przed uruchomieniem serwera.
 - Pinuj commit wrappera i serwera w configu klienta. Aktualizacja = podmiana hasha po przeglądzie zmian.
 
 ## Rozwój

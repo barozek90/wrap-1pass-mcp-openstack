@@ -6,7 +6,7 @@ mappings, never secrets.
 
     vault   = "Private"        # default vault
     timeout = 60               # seconds per 'op' call
-    unset   = ["OS_TAG"]       # variables not passed on to the server
+    unset   = ["OP_TAG"]       # variables not passed on to the server
 
     [[provider]]
     type = "openstack"
@@ -55,7 +55,7 @@ BUILTIN_OPENSTACK = Profile(
     source="wbudowany",
     vault=None,
     timeout=None,
-    unset=("OS_TAG",),
+    unset=("OP_TAG",),
     providers=(ProviderSpec("openstack", {}),),
 )
 
