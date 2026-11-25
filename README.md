@@ -68,6 +68,10 @@ rozróżniania wielkości liter.
 | `system_scope` = `all` | scope systemowy; wyklucza pola `project_*` |
 | `interface` | domyślnie `public` |
 | `identity_api_version` | domyślnie `3` (musi być liczbą) |
+| `verify_cert` | `true` (lub brak pola) = certyfikat TLS jest sprawdzany (domyślnie); `false` = certyfikat ignorowany. Dozwolone: `true/false`, `yes/no`, `1/0` (bez rozróżniania wielkości liter) |
+
+`verify_cert = false` zapisuje `verify: false` w `clouds.yaml` i wypisuje ostrzeżenie w podsumowaniu.
+Wyłączaj tylko dla zaufanych środowisk (np. certyfikat samopodpisany).
 
 Przy braku pola lub błędnej wartości launcher kończy się z kodem 1 i komunikatem ze
 wskazaniem etapu i parametru, np.
