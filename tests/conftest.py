@@ -68,15 +68,17 @@ def make_item(title, item_id=None, tags=("OS_TAG",), website="https://keystone.e
 
 class FakeOp:
     def __init__(self, tmp_path: Path) -> None:
-        self.bin = tmp_path / "bin"
-        self.bin.mkdir()
+        self.home = tmp_path / "home"
+        self.home.mkdir()
+        # harden() puts $HOME/.local/bin first on PATH, so the fake op wins even
+        # when a real op is installed in /usr/bin.
+        self.bin = self.home / ".local" / "bin"
+        self.bin.mkdir(parents=True)
         exe = self.bin / "op"
         exe.write_text(FAKE_OP.replace("__PYTHON__", sys.executable))
         exe.chmod(0o755)
         self.db_path = tmp_path / "db.json"
         self.log = tmp_path / "op.log"
-        self.home = tmp_path / "home"
-        self.home.mkdir()
         self.run = tmp_path / "run"
         self.run.mkdir(mode=0o700)
         self.set_db({"items": {}, "refs": {}})

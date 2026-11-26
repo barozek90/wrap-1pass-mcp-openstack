@@ -6,4 +6,4 @@ runtime directory) and then replaces itself with the real MCP server
 command, so the client talks to the server directly over stdio.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

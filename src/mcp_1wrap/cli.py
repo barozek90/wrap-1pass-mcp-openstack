@@ -6,9 +6,9 @@ import argparse
 import os
 import sys
 
-from mcp_1wrap import __version__
+from mcp_1wrap import __version__, fanout
 from mcp_1wrap.errors import WrapError
-from mcp_1wrap.launcher import execute, prepare
+from mcp_1wrap.launcher import apply_providers, execute, setup
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -30,10 +30,19 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        prepared = prepare(args, os.environ)
+        session = setup(args, os.environ)
+        spec = session.profile.fanout
+        if spec is not None:
+            if not args.check:
+                return fanout.run(session)
+            if not session.env.get("OS_CLOUD", "").strip():
+                return fanout.check(session)
+        prepared = apply_providers(session)
         if args.check:
             print(f"profil: {prepared.profile.name} ({prepared.profile.source})")
             print(f"polecenie: {prepared.command or '<nie podano>'}")
+            if spec is not None:
+                print(f"tryb: fan-out (argument '{spec.argument}'); poniżej jedna chmura z OS_CLOUD")
             for line in prepared.summary:
                 print(line)
             print(f"zmienne ustawiane dla serwera: {', '.join(prepared.set_vars) or '<brak>'}")

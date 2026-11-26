@@ -58,8 +58,22 @@ def _debug_report(env: Mapping[str, str]) -> None:
         note(f"{tool}={shutil.which(tool, path=env.get('PATH')) or '<brak>'}")
 
 
-def prepare(args: Any, environ: Mapping[str, str]) -> Prepared:
-    """Do all the work except the final exec. ``environ`` is not modified."""
+@dataclass
+class Session:
+    """What is decided once per process, before any provider runs."""
+
+    profile: Profile
+    command: str | None          # resolved server command (None only with --check)
+    command_line: list[str]      # server command and its arguments, without '--'
+    env: dict[str, str]          # hardened copy of the environment
+    timeout: int                 # seconds per 'op' call
+
+
+def setup(args: Any, environ: Mapping[str, str]) -> Session:
+    """Harden the environment, find the server command and load the profile.
+
+    ``environ`` is not modified. Nothing here talks to 1Password.
+    """
     env = dict(environ)
     harden(env)
     debug = bool(args.debug or env.get("MCP_1WRAP_DEBUG"))
@@ -87,6 +101,15 @@ def prepare(args: Any, environ: Mapping[str, str]) -> Prepared:
     except ValueError:
         raise WrapError("[config] OP_TIMEOUT musi być liczbą sekund") from None
 
+    return Session(profile, command, command_line, env, timeout)
+
+
+def make_context(session: Session, overrides: Mapping[str, str] | None = None) -> Context:
+    """The context providers run in: ``session.env`` plus ``overrides``."""
+    env = dict(session.env)
+    if overrides:
+        env.update(overrides)
+
     runtime_dir: list[Path] = []
 
     def runtime() -> Path:
@@ -94,13 +117,26 @@ def prepare(args: Any, environ: Mapping[str, str]) -> Prepared:
             runtime_dir.append(private_dir(runtime_base(env, note) / "mcp-1wrap"))
         return runtime_dir[0]
 
-    context = Context(
-        op=OpClient(env, timeout),
-        vault=profile.vault or DEFAULT_VAULT,
+    return Context(
+        op=OpClient(env, session.timeout),
+        vault=session.profile.vault or DEFAULT_VAULT,
         environ=env,
         runtime=runtime,
         note=note,
     )
+
+
+def apply_providers(
+    session: Session, overrides: Mapping[str, str] | None = None
+) -> Prepared:
+    """Run the profile's providers and build the server's environment.
+
+    ``overrides`` are added to the environment the providers see (for example
+    ``OS_CLOUD`` to pick one cloud); ``session`` is not modified.
+    """
+    profile = session.profile
+    context = make_context(session, overrides)
+    env = context.environ
 
     merged: dict[str, str] = {}
     summary: list[str] = []
@@ -121,12 +157,17 @@ def prepare(args: Any, environ: Mapping[str, str]) -> Prepared:
 
     return Prepared(
         profile=profile,
-        command=command,
-        args=command_line[1:],
+        command=session.command,
+        args=session.command_line[1:],
         env=child,
         summary=summary,
         set_vars=sorted(merged),
     )
+
+
+def prepare(args: Any, environ: Mapping[str, str]) -> Prepared:
+    """Do all the work except the final exec. ``environ`` is not modified."""
+    return apply_providers(setup(args, environ))
 
 
 def execute(prepared: Prepared) -> None:

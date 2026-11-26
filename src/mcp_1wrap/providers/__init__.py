@@ -1,8 +1,9 @@
 """Provider registry."""
 
-from mcp_1wrap.providers import envvars, openstack
+from mcp_1wrap.providers import envvars, item, openstack
 
 REGISTRY = {
     openstack.NAME: openstack,
     envvars.NAME: envvars,
+    item.NAME: item,
 }

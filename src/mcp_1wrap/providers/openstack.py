@@ -23,10 +23,11 @@ from typing import Any
 
 from mcp_1wrap.errors import WrapError
 from mcp_1wrap.fsutil import private_dir, write_private_atomic
+from mcp_1wrap.providers import items
 from mcp_1wrap.providers.base import Context, Result
 
 NAME = "openstack"
-DEFAULT_TAG = "OS_TAG"
+LIST_STAGE = f"{NAME}/list"
 REQUIRED = ["website", "username", "password"]
 DEFAULTS = {
     "interface": "public",
@@ -125,46 +126,21 @@ def build_cloud(title: str, item: dict[str, Any]) -> tuple[dict[str, Any], dict[
 
 
 def apply(ctx: Context, options: dict[str, Any]) -> Result:
-    env = ctx.environ
-    vault = env.get("OP_VAULT", "").strip() or options.get("vault") or ctx.vault
-    tag = env.get("OP_TAG", "").strip() or options.get("tag") or DEFAULT_TAG
-    wanted_raw = env.get("OS_CLOUD", "").strip() or options.get("cloud", "")
-    wanted = wanted_raw.strip().casefold() or None
+    sel = items.selection(ctx, options)
     cloud_name_var = options.get("cloud_name_var", "CLOUD_NAME")
 
-    items = ctx.op.json("openstack/list", "item", "list", "--vault", vault, "--tags", tag)
-    if not items:
-        raise WrapError(f"[openstack/list] brak itemów z tagiem '{tag}' w sejfie '{vault}'")
-
+    entries = items.list_entries(ctx, LIST_STAGE, sel)
     clouds: dict[str, Any] = {}
     secure: dict[str, Any] = {}
-    seen: dict[str, str] = {}
-    for entry in items:
-        title = entry["title"].strip()
-        folded = title.casefold()
-        if wanted and folded != wanted:
-            continue
-        if folded in seen:
-            raise WrapError(
-                f"[openstack/list] zduplikowana nazwa chmury '{title}' (koliduje z "
-                f"'{seen[folded]}', porównanie bez rozróżniania wielkości liter)"
-            )
-        seen[folded] = title
-        item = ctx.op.json(
-            f"openstack/item '{title}'", "item", "get", entry["id"], "--vault", vault
-        )
+    for title, entry in items.pick(entries, sel, LIST_STAGE, f"OS_CLOUD='{sel.wanted_raw}'"):
+        item = items.get_item(ctx, f"{NAME}/item '{title}'", sel, entry)
         clouds[title], secure[title] = build_cloud(title, item)
-
-    if not clouds:
-        available = ", ".join(sorted(e["title"] for e in items))
-        raise WrapError(
-            f"[openstack/list] żaden item z tagiem '{tag}' nie pasuje do "
-            f"OS_CLOUD='{wanted_raw}'. Dostępne: {available}"
-        )
 
     # Same inputs -> same directory and content, so concurrent launchers
     # (terminal + desktop client) can safely replace the files atomically.
-    digest = hashlib.sha256(f"{vault}|{tag}|{wanted or '*'}".encode()).hexdigest()[:10]
+    digest = hashlib.sha256(
+        f"{sel.vault}|{sel.tag}|{sel.wanted or '*'}".encode()
+    ).hexdigest()[:10]
     out = private_dir(ctx.runtime() / f"openstack-{digest}")
     write_private_atomic(out / "clouds.yaml", json.dumps({"clouds": clouds}, indent=2))
     write_private_atomic(out / "secure.yaml", json.dumps({"clouds": secure}, indent=2))
@@ -175,13 +151,14 @@ def apply(ctx: Context, options: dict[str, Any]) -> Result:
             "OS_CLIENT_SECURE_FILE": str(out / "secure.yaml"),
         }
     )
-    if wanted:
+    if sel.wanted:
         exact = next(iter(clouds))
         result.env["OS_CLOUD"] = exact
         if cloud_name_var:
             result.env[cloud_name_var] = exact
     result.summary.append(
-        f"openstack: sejf '{vault}', tag '{tag}', chmury ({len(clouds)}): {', '.join(clouds)}"
+        f"openstack: sejf '{sel.vault}', tag '{sel.tag}', "
+        f"chmury ({len(clouds)}): {', '.join(clouds)}"
     )
     insecure = [name for name, cloud in clouds.items() if cloud["verify"] is False]
     if insecure:

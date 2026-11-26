@@ -1,0 +1,26 @@
+# ~/.config/mcp-1wrap/profiles/victorialogs.toml
+# Sekretów tu nie ma: tylko nazwy sejfów, tagów i etykiet pól. Adresy (wartości)
+# są w polach itemów chmur w 1Password; w przykładzie tylko placeholdery.
+#
+# Z tabelą [fanout] jeden wpis klienta obsługuje wszystkie chmury (agent podaje argument "cloud").
+# Bez tej tabeli profil służy do wpisu na jedną chmurę (OS_CLOUD w configu klienta).
+# Sprawdzenie: mcp-1wrap --profile victorialogs --check -- mcp-victorialogs
+
+[fanout]
+# Sonda pobiera listę narzędzi; nie łączy się z adresem, ale serwer wymaga poprawnej wartości.
+probe_env = { VL_INSTANCE_ENTRYPOINT = "http://127.0.0.1:9" }
+# argument      = "cloud"            # nazwa dodawanego argumentu narzędzi
+# allow_clouds  = ["EXAMPLE-CLOUD"]  # opcjonalnie: tylko te chmury (daje też enum w schemacie)
+# inherit       = ["DOCKER_HOST"]    # opcjonalnie: dodatkowe zmienne dla backendów
+# start_timeout = 30                 # sekundy na start backendu i sondy
+# call_timeout  = 600                # sekundy na jedno wywołanie narzędzia
+
+[[provider]]
+type = "item"
+tag  = "OS_TAG"                       # ten sam tag, co przy itemach chmur dla dostawcy 'openstack'
+# allow_hosts = ["*.intra.example"]   # opcjonalnie: dozwolone hosty dla check = "url"
+# allow_http  = true                  # opcjonalnie: http także poza loopback (domyślnie tylko https)
+
+[provider.vars]
+# ZMIENNA_SERWERA = { field = "etykieta pola w itemie", check = "url" | "text" }
+VL_INSTANCE_ENTRYPOINT = { field = "vlogs_url", check = "url" }

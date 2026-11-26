@@ -8,7 +8,7 @@ import pytest
 
 from conftest import make_item
 from mcp_1wrap.errors import WrapError
-from mcp_1wrap.launcher import prepare, resolve_command
+from mcp_1wrap.launcher import apply_providers, prepare, resolve_command, setup
 
 SRC = str(Path(__file__).resolve().parents[1] / "src")
 DUMP = "import os, json; print(json.dumps(sorted(k for k in os.environ if k.startswith(('OS_','CLOUD_NAME','MCP_1WRAP','FAKE')))))"
@@ -61,6 +61,32 @@ def test_stale_path_is_repaired_for_the_server(fake_op, args):
     env["PATH"] = str(fake_op.bin)  # thin GUI-like PATH
     prep = prepare(args(), env)
     assert "/usr/bin" in prep.env["PATH"].split(":")
+
+
+def test_setup_does_not_touch_1password(fake_op, args):
+    fake_op.set_db({"items": {"Private": [make_item("A")]}, "refs": {}})
+    session = setup(args(), fake_op.environ())
+    assert fake_op.calls() == []
+    assert session.profile.name == "openstack"
+    assert session.command_line == [sys.executable]
+
+
+def test_apply_providers_overrides_reach_providers_not_the_session(fake_op, args):
+    fake_op.set_db({"items": {"Private": [make_item("A"), make_item("B")]}, "refs": {}})
+    session = setup(args(), fake_op.environ())
+    picked = apply_providers(session, {"OS_CLOUD": "b"})
+    assert picked.env["OS_CLOUD"] == "B"
+    assert "OS_CLOUD" not in session.env
+    assert "OS_CLOUD" not in apply_providers(session).env  # no override: every cloud
+
+
+def test_apply_providers_can_run_once_per_cloud(fake_op, args):
+    fake_op.set_db({"items": {"Private": [make_item("A"), make_item("B")]}, "refs": {}})
+    session = setup(args(), fake_op.environ())
+    first = apply_providers(session, {"OS_CLOUD": "a"})
+    second = apply_providers(session, {"OS_CLOUD": "b"})
+    assert (first.env["OS_CLOUD"], second.env["OS_CLOUD"]) == ("A", "B")
+    assert first.command == second.command and first.args == second.args == []
 
 
 def run_cli(fake_op, *cli_args, extra_env=None):

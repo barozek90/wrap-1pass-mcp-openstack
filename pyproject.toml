@@ -1,7 +1,7 @@
 [project]
 name = "mcp-1wrap-openstack"
-version = "0.1.0"
-description = "1Password launcher for MCP servers (item-per-cloud OpenStack config generator and env injection)"
+version = "0.2.0"
+description = "1Password launcher for MCP servers (item-per-cloud OpenStack config generator, env injection and a multi-cloud fan-out gateway)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
